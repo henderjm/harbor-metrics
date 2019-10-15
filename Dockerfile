@@ -1,6 +1,12 @@
 FROM golang:1.12-stretch
 
-COPY main.go /
+WORKDIR /app
 
-CMD go run /main.go
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN go build -o harbor-metrics
+
+CMD ["./harbor-metrics"]
 

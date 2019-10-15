@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +9,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -45,9 +46,11 @@ func init() {
 }
 
 func newHarborCollector() *harborCollector {
+	fmt.Println("**Initialising Harbor Collector**")
+	metricDesc = prometheus.NewDesc("harbor_health_collector", "Indicates the health of the harbor frontend", nil, nil)
 	c := &harborCollector{
 		exitChan:   make(chan struct{}),
-		valueLists: map[string]*prometheus.Desc{"ha": prometheus.NewDesc("harbor_health_collector", "Indicates the health of the harbor frontend", nil, nil)},
+		valueLists: map[string]*prometheus.Desc{"mark_legend_ha": metricDesc},
 	}
 
 	return c
@@ -55,6 +58,7 @@ func newHarborCollector() *harborCollector {
 
 // Collect implements prometheus.Collector.
 func (c harborCollector) Collect(ch chan<- prometheus.Metric) {
+	fmt.Println("**COLLECTING**")
 
 	c.mux.Lock() // To protect metrics from concurrent collects
 	defer c.mux.Unlock()
@@ -70,12 +74,15 @@ func (c harborCollector) Collect(ch chan<- prometheus.Metric) {
 		isUp = 1
 	}
 
-	ch <- prometheus.MustNewConstMetric(c.valueLists["ha"],
+	fmt.Println(fmt.Sprintf("**MARK**isUp: %d **", isUp))
+
+	ch <- prometheus.MustNewConstMetric(c.valueLists["mark_legend_ha"],
 		prometheus.GaugeValue, float64(isUp))
 }
 
 // Describe implements prometheus.Collector.
 func (c harborCollector) Describe(ch chan<- *prometheus.Desc) {
+	fmt.Println("**DESCRIBING**")
 	ch <- metricDesc
 }
 
@@ -107,5 +114,5 @@ func main() {
 	})
 
 	log.Printf("Harbor Prometheus Exporter has successfully started")
-	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
