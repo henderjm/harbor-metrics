@@ -63,14 +63,13 @@ func (c harborCollector) Collect(ch chan<- prometheus.Metric) {
 	c.mux.Lock() // To protect metrics from concurrent collects
 	defer c.mux.Unlock()
 
-	domain := "reg.mydomain.io"
+	domain := "192.168.99.101:30003"
 	client := http.DefaultClient
 	var isUp int
-	resp, err := client.Get(fmt.Sprintf("http://%s", domain))
+	resp, err := client.Get(fmt.Sprintf("https://%s", domain))
 	if err != nil {
 		isUp = 0
-	}
-	if resp.StatusCode == 200 {
+	} else if resp.StatusCode == 200 {
 		isUp = 1
 	}
 
