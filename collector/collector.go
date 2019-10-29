@@ -20,7 +20,7 @@ type Gauge float64
 // Type returns "gauge".
 func (v Gauge) Type() string { return "gauge" }
 
-type metrics map[string]*prometheus.Desc
+type metrics map[int]*prometheus.Desc
 
 type ValueList struct {
 	Time     time.Time
@@ -30,15 +30,15 @@ type ValueList struct {
 }
 
 type harborCollector struct {
-	valueLists map[string]*prometheus.Desc
+	valueLists map[int]*prometheus.Desc
 	exitChan   <-chan struct{}
 	mux        sync.Mutex
 }
 
 var (
 	harborMetrics = metrics{
-		"harbor_alive": newHarborMetric("harbor_health_collector", "Indicates the health of the harbor frontend", nil),
-		"project_count": newHarborMetric("num_of_projects", "Counts the total number of projects in the Harbor Registry", nil),
+		1: newHarborMetric("harbor_health_collector", "Indicates the health of the harbor frontend", nil),
+		2: newHarborMetric("num_of_projects", "Counts the total number of projects in the Harbor Registry", nil),
 	}
 )
 
@@ -84,7 +84,7 @@ func (c harborCollector) Collect(ch chan<- prometheus.Metric) {
 
 	fmt.Println(fmt.Sprintf("**MARK**isUp: %d **", isUp))
 
-	ch <- prometheus.MustNewConstMetric(c.valueLists["harbor_alive"],
+	ch <- prometheus.MustNewConstMetric(c.valueLists[1],
 		prometheus.GaugeValue, float64(isUp))
 }
 
