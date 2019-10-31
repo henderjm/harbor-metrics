@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"henderjm/harbor-metrics/collector"
 	"log"
 	"net/http"
@@ -10,15 +9,35 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var scrapers = []collector.Scraper{
+	collector.HarborHealthDashboard{},
+	collector.NumOfProjects{},
+}
+
+func scraperHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		registry := prometheus.NewRegistry()
+		registry.MustRegister(collector.NewHarborCollector(scrapers))
+		gatherers := prometheus.Gatherers{
+			prometheus.DefaultGatherer,
+			registry,
+		}
+
+		h := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{})
+		h.ServeHTTP(w, r)
+	}
+}
 
 func main() {
 	fmt.Println("starting harbor metrics collector")
 
-	registry := prometheus.NewRegistry()
-	registry.MustRegister(collector.NewHarborCollector())
+	handler := scraperHandler()
+	http.Handle("/metrics", promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, handler))
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM)
@@ -27,7 +46,6 @@ func main() {
 		os.Exit(0)
 	}()
 
-	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`<html>
 			<head><title>Harbor Exporter</title></head>

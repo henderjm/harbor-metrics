@@ -1,12 +1,11 @@
 package collector
 
 import (
-	"crypto/tls"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"net/http"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Value interface {
@@ -20,7 +19,7 @@ type Gauge float64
 // Type returns "gauge".
 func (v Gauge) Type() string { return "gauge" }
 
-type metrics map[int]*prometheus.Desc
+//type metrics map[int]*prometheus.Desc
 
 type ValueList struct {
 	Time     time.Time
@@ -31,67 +30,44 @@ type ValueList struct {
 
 type harborCollector struct {
 	valueLists map[int]*prometheus.Desc
+	scrapers   []Scraper
 	exitChan   <-chan struct{}
 	mux        sync.Mutex
 }
 
-var (
-	harborMetrics = metrics{
-		1: newHarborMetric("harbor_health_collector", "Indicates the health of the harbor frontend", nil),
-		2: newHarborMetric("num_of_projects", "Counts the total number of projects in the Harbor Registry", nil),
-	}
-)
-
-func newHarborMetric(metricName, helper string, constLabels prometheus.Labels) *prometheus.Desc {
-	return prometheus.NewDesc(metricName, helper, nil, nil)
-}
-
-func NewHarborCollector() *harborCollector {
-	fmt.Println("**Initialising Harbor Collector**")
+func NewHarborCollector(scrapers []Scraper) *harborCollector {
 	c := &harborCollector{
-		exitChan:   make(chan struct{}),
-		valueLists: harborMetrics,
+		exitChan: make(chan struct{}),
+		scrapers: scrapers,
 	}
 
 	return c
 }
 
+func (c harborCollector) scrape(ch chan<- prometheus.Metric) {
+	var wg sync.WaitGroup
+
+	for _, scraper := range c.scrapers {
+		wg.Add(1)
+		go func(scraper Scraper) {
+			defer wg.Done()
+			err := scraper.Update(ch)
+			if err != nil {
+				fmt.Println(fmt.Errorf("error scraping: %s\n", scraper.MetricName()))
+				fmt.Println(err)
+			} else {
+				fmt.Printf("successfully scraped: %s\n", scraper.MetricName())
+			}
+		}(scraper)
+	}
+	wg.Wait()
+}
+
 // Collect implements prometheus.Collector.
 func (c harborCollector) Collect(ch chan<- prometheus.Metric) {
-	fmt.Println("**COLLECTING**")
-
-	c.mux.Lock() // To protect metrics from concurrent collects
-	defer c.mux.Unlock()
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{
-		Transport:     tr,
-	}
-
-	domain := "https://192.168.99.100:30003"
-	var isUp int
-	resp, err := client.Get(fmt.Sprintf(domain))
-	if err != nil {
-		fmt.Println("error")
-		fmt.Printf("message: %s\n", err.Error())
-		isUp = 0
-	} else if resp.StatusCode == 200 {
-		isUp = 1
-	}
-	fmt.Printf("status code: %d\n", resp.StatusCode)
-
-	fmt.Println(fmt.Sprintf("**MARK**isUp: %d **", isUp))
-
-	ch <- prometheus.MustNewConstMetric(c.valueLists[1],
-		prometheus.GaugeValue, float64(isUp))
+	c.scrape(ch)
 }
 
 // Describe implements prometheus.Collector.
 func (c harborCollector) Describe(ch chan<- *prometheus.Desc) {
-	fmt.Println("**DESCRIBING**")
-	for _, m := range harborMetrics{
-		ch <- m
-	}
 }
