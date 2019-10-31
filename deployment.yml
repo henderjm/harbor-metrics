@@ -65,10 +65,10 @@ spec:
             - name: http-metrics
               containerPort: 8080
               protocol: TCP
-          readinessProbe:
-            httpGet:
-              path: /metrics
-              port: http-metrics
+          # readinessProbe:
+          #   httpGet:
+          #     path: /metrics
+          #     port: http-metrics
   strategy:
     rollingUpdate:
       maxSurge: 1
