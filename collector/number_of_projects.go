@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -59,9 +60,10 @@ func (h NumOfProjects) Update(ch chan<- prometheus.Metric) error {
 		Transport: tr,
 	}
 
+	token := os.Getenv("HARBOR_TOKEN")
 	domain := "https://192.168.64.2:30003/api/projects"
 	req, err := http.NewRequest("GET", domain, nil)
-	req.Header.Add("authorization", "Basic YWRtaW46SGFyYm9yMTIzNDU=")
+	req.Header.Add("authorization", fmt.Sprintf("Basic %s", token))
 	req.Header.Add("accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
