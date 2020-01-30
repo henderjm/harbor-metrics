@@ -8,7 +8,7 @@ import (
 
 var _ = Describe("NumberOfProjects", func() {
 
-	var nopScraper collector.Scraper = collector.NumOfProjects{}
+	var nopScraper collector.Scraper = collector.NewNumOfProjectsScraper()
 
 	It("Should have a metric name", func() {
 		Expect(nopScraper.MetricName()).To(Equal("number_of_projects"))

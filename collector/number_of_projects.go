@@ -12,6 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const nopMetricName = "number_of_projects"
+
 type Project struct {
 	ProjectID         int64        `json:"project_id"`
 	OwnerID           int64        `json:"owner_id"`
@@ -41,26 +43,30 @@ type Metadata struct {
 }
 
 var numOfProjectsMetric = prometheus.NewDesc(
-	"number_of_projects",
+	nopMetricName,
 	"Number of projects in Harbor Registry",
 	nil,
 	nil,
 )
 
-type NumOfProjects struct{}
-
-func (h NumOfProjects) MetricName() string {
-	return "number_of_projects"
+type NumOfProjects struct{
+	Client http.Client
 }
 
-func (h NumOfProjects) Update(ch chan<- prometheus.Metric) error {
+func NewNumOfProjectsScraper() NumOfProjects{
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := http.Client{
+	return NumOfProjects{Client: http.Client{
 		Transport: tr,
-	}
+	}}
+}
 
+func (h NumOfProjects) MetricName() string {
+	return nopMetricName
+}
+
+func (h NumOfProjects) Update(ch chan<- prometheus.Metric) error {
 	decodedToken := os.Getenv("HARBOR_TOKEN")
 	domain := os.Getenv("REGISTRY_SERVER") + "/api/projects"
 	encodedToken := base64.StdEncoding.EncodeToString([]byte(decodedToken))
@@ -68,7 +74,7 @@ func (h NumOfProjects) Update(ch chan<- prometheus.Metric) error {
 	req, err := http.NewRequest("GET", domain, nil)
 	req.Header.Add("authorization", fmt.Sprintf("Basic %s", encodedToken))
 	req.Header.Add("accept", "application/json")
-	resp, err := client.Do(req)
+	resp, err := h.Client.Do(req)
 	if err != nil {
 		fmt.Println(fmt.Errorf("error making request: %s", domain))
 		fmt.Println(err)

@@ -2,6 +2,7 @@ package collector
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,44 +10,39 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const metricName = "harbor_health_collector"
-
-var harborHealthDashboardMetric = prometheus.NewDesc(
-	"harbor_health_collector",
-	"Indicates the health of the harbor frontend",
-	nil,
-	nil,
-)
-
-type HarborHealthDashboard struct{}
-
-func (h HarborHealthDashboard) MetricName() string {
-	return metricName
+type HarborHealthDashboard struct {
+	Client http.Client
 }
 
-func (h HarborHealthDashboard) Update(ch chan<- prometheus.Metric) error {
+func NewHarborHealthDashboardScraper() HarborHealthDashboard {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := http.Client{
+	return HarborHealthDashboard{Client: http.Client{
 		Transport: tr,
+	}}
+}
+
+func (h HarborHealthDashboard) MetricName() string {
+	return HealthMetricName
+}
+
+func (h HarborHealthDashboard) Update(ch chan<- prometheus.Metric) error {
+	domain := os.Getenv("REGISTRY_SERVER")
+	if domain == "" {
+		return errors.New("missing environment variable REGISTRY_SERVER")
 	}
 
-	domain := os.Getenv("REGISTRY_SERVER") // TODO: Error handling on empty/bad values
 	var isUp int
-	resp, err := client.Get(fmt.Sprintf(domain))
+	resp, err := h.Client.Get(fmt.Sprintf(domain))
 	if err != nil {
-		fmt.Println("error")
-		fmt.Printf("message: %s\n", err.Error())
+		// TODO: Logging lager
 		isUp = 0
 	} else if resp.StatusCode == 200 {
 		isUp = 1
 	}
-	fmt.Printf("status code: %d\n", resp.StatusCode)
 
-	fmt.Println(fmt.Sprintf("**MARK**isUp: %d **", isUp))
-
-	ch <- prometheus.MustNewConstMetric(harborHealthDashboardMetric,
+	ch <- prometheus.MustNewConstMetric(HarborHealthDashboardMetric,
 		prometheus.GaugeValue, float64(isUp))
 	return nil
 }
