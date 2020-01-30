@@ -2,6 +2,7 @@ package collector
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -60,10 +61,12 @@ func (h NumOfProjects) Update(ch chan<- prometheus.Metric) error {
 		Transport: tr,
 	}
 
-	token := os.Getenv("HARBOR_TOKEN")
+	decodedToken := os.Getenv("HARBOR_TOKEN")
 	domain := os.Getenv("REGISTRY_SERVER") + "/api/projects"
+	encodedToken := base64.StdEncoding.EncodeToString([]byte(decodedToken))
+
 	req, err := http.NewRequest("GET", domain, nil)
-	req.Header.Add("authorization", fmt.Sprintf("Basic %s", token))
+	req.Header.Add("authorization", fmt.Sprintf("Basic %s", encodedToken))
 	req.Header.Add("accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
