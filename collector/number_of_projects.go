@@ -61,7 +61,7 @@ func (h NumOfProjects) Update(ch chan<- prometheus.Metric) error {
 	}
 
 	token := os.Getenv("HARBOR_TOKEN")
-	domain := "https://192.168.64.2:30003/api/projects"
+	domain := os.Getenv("REGISTRY_SERVER") + "/api/projects"
 	req, err := http.NewRequest("GET", domain, nil)
 	req.Header.Add("authorization", fmt.Sprintf("Basic %s", token))
 	req.Header.Add("accept", "application/json")

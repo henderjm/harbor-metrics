@@ -66,7 +66,7 @@ spec:
     spec:
       serviceAccountName: harbor-metrics-exporter
       containers:
-        - image: harbor-metrics:latest
+        - image: dev.registry.pivotal.io/software-distribution/harbor-metrics:latest
           imagePullPolicy: Never
           name: harbor-metrics-exporter
           env:
@@ -75,6 +75,8 @@ spec:
                 secretKeyRef:
                   name: harbortokensecret
                   key: token
+            - name: REGISTRY_SERVER
+              value: "dev.registry.pivotal.io"
           ports:
             - name: http-metrics
               containerPort: 8080
