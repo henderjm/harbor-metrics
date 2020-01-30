@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -31,7 +32,7 @@ func (h HarborHealthDashboard) Update(ch chan<- prometheus.Metric) error {
 		Transport: tr,
 	}
 
-	domain := "https://192.168.64.2:30003"
+	domain := os.Getenv("REGISTRY_SERVER") // TODO: Error handling on empty/bad values
 	var isUp int
 	resp, err := client.Get(fmt.Sprintf(domain))
 	if err != nil {
