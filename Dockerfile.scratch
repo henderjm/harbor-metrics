@@ -1,0 +1,8 @@
+FROM scratch
+
+WORKDIR /app
+
+COPY harbor-metrics harbor-metrics
+
+CMD ["./harbor-metrics"]
+
