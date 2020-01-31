@@ -38,9 +38,9 @@ func (h HarborHealthDashboard) Update(ch chan<- prometheus.Metric) error {
 	}
 
 	resp, err := h.Client.Get(fmt.Sprintf("%s/api/health", domain))
-	if err != nil {
+	if err != nil || resp.StatusCode != 200 {
 		isUp = 0
-	} else if resp.StatusCode == 200 {
+	} else {
 		body, readErr := ioutil.ReadAll(resp.Body)
 		if readErr != nil {
 			return err
@@ -49,16 +49,14 @@ func (h HarborHealthDashboard) Update(ch chan<- prometheus.Metric) error {
 		if err != nil {
 			return err
 		}
-
-		if healthStatuses.Status == Healthy {
-			isUp = 1
-		} else {
-			isUp = 0
+		isUp = 1
+		for _, component := range healthStatuses.Components {
+			if component.Status != Healthy {
+				isUp = 0
+				break
+			}
 		}
-	} else {
-		isUp = 0
 	}
-
 	ch <- prometheus.MustNewConstMetric(
 		HarborHealthDashboardMetric,
 		prometheus.GaugeValue,
