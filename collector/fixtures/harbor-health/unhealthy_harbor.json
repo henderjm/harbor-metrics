@@ -1,0 +1,41 @@
+{
+  "status": "healthy",
+  "components": [
+    {
+      "name": "redis",
+      "status": "healthy"
+    },
+    {
+      "name": "jobservice",
+      "status": "healthy"
+    },
+    {
+      "name": "registry",
+      "status": "healthy"
+    },
+    {
+      "name": "database",
+      "status": "healthy"
+    },
+    {
+      "name": "chartmuseum",
+      "status": "healthy"
+    },
+    {
+      "name": "notary",
+      "status": "healthy"
+    },
+    {
+      "name": "core",
+      "status": "unhealthy"
+    },
+    {
+      "name": "portal",
+      "status": "healthy"
+    },
+    {
+      "name": "registryctl",
+      "status": "healthy"
+    }
+  ]
+}

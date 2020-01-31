@@ -81,5 +81,33 @@ var _ = Describe("HarborHealthDashboard", func() {
 				s.Close()
 			})
 		})
+		Context("When a Harbor component is not healthy", func() {
+			BeforeEach(func() {
+				downstream := &httpmock.MockHandler{}
+				responseData, err := ioutil.ReadFile("./fixtures/harbor-health/unhealthy_harbor.json")
+				Expect(err).ToNot(HaveOccurred())
+				downstream.On("Handle", "GET", "/api/health", mock.Anything).Return(httpmock.Response{
+					Body:   responseData,
+					Status: 200,
+				})
+
+				s = httpmock.NewServer(downstream)
+				err = os.Setenv("REGISTRY_SERVER", s.URL())
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("Should send a metric of value 0", func() {
+				ch := make(chan prometheus.Metric, 1)
+				err := healthScraper.Update(ch)
+				Expect(err).ToNot(HaveOccurred())
+				expectedResult := prometheus.MustNewConstMetric(
+					collector.HarborHealthDashboardMetric,
+					prometheus.GaugeValue,
+					float64(0),
+				)
+				Eventually(ch).Should(Receive(Equal(expectedResult)))
+				s.Close()
+			})
+		})
 	})
 })
