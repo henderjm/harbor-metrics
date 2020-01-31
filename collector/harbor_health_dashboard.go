@@ -2,8 +2,10 @@ package collector
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -28,23 +30,57 @@ func (h HarborHealthDashboard) MetricName() string {
 }
 
 func (h HarborHealthDashboard) Update(ch chan<- prometheus.Metric) error {
+	// TODO: Logging lager
+	var isUp int
 	domain := os.Getenv("REGISTRY_SERVER")
 	if domain == "" {
 		return errors.New("missing environment variable REGISTRY_SERVER")
 	}
 
-	var isUp int
-	resp, err := h.Client.Get(fmt.Sprintf(domain))
+	resp, err := h.Client.Get(fmt.Sprintf("%s/api/health", domain))
 	if err != nil {
-		// TODO: Logging lager
 		isUp = 0
 	} else if resp.StatusCode == 200 {
-		isUp = 1
+		body, readErr := ioutil.ReadAll(resp.Body)
+		if readErr != nil {
+			return err
+		}
+		healthStatuses, err := unmarshalWelcome(body)
+		if err != nil {
+			return err
+		}
+
+		if healthStatuses.Status == Healthy {
+			isUp = 1
+		} else {
+			isUp = 0
+		}
+	} else {
+		isUp = 0
 	}
 
-	ch <- prometheus.MustNewConstMetric(HarborHealthDashboardMetric,
-		prometheus.GaugeValue, float64(isUp))
+	ch <- prometheus.MustNewConstMetric(
+		HarborHealthDashboardMetric,
+		prometheus.GaugeValue,
+		float64(isUp),
+	)
 	return nil
+}
+
+func unmarshalWelcome(data []byte) (Welcome, error) {
+	var r Welcome
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+type Welcome struct {
+	Status     string      `json:"status"`
+	Components []Component `json:"components"`
+}
+
+type Component struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 // Assert Interface

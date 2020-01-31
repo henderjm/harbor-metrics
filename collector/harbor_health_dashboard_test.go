@@ -1,6 +1,7 @@
 package collector_test
 
 import (
+	"io/ioutil"
 	"os"
 
 	collector "henderjm/harbor-metrics/collector"
@@ -27,13 +28,16 @@ var _ = Describe("HarborHealthDashboard", func() {
 		Context("When Harbor is up", func() {
 			BeforeEach(func() {
 				downstream := &httpmock.MockHandler{}
-				downstream.On("Handle", "GET", "/", mock.Anything).Return(httpmock.Response{
-					Body:   []byte(`{"status": "healthy"}`),
+
+				responseData, err := ioutil.ReadFile("./fixtures/harbor-health/healthy_harbor.json")
+				Expect(err).ToNot(HaveOccurred())
+				downstream.On("Handle", "GET", "/api/health", mock.Anything).Return(httpmock.Response{
+					Body:   responseData,
 					Status: 200,
 				})
 
 				s = httpmock.NewServer(downstream)
-				err := os.Setenv("REGISTRY_SERVER", s.URL())
+				err = os.Setenv("REGISTRY_SERVER", s.URL())
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -54,7 +58,7 @@ var _ = Describe("HarborHealthDashboard", func() {
 		Context("When Harbor is down", func() {
 			BeforeEach(func() {
 				downstream := &httpmock.MockHandler{}
-				downstream.On("Handle", "GET", "/", mock.Anything).Return(httpmock.Response{
+				downstream.On("Handle", "GET", "/api/health", mock.Anything).Return(httpmock.Response{
 					Body:   []byte(`{"status": "healthy"}`),
 					Status: 500,
 				})

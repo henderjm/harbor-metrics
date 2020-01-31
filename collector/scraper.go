@@ -8,6 +8,7 @@ type Scraper interface {
 }
 
 // Const
+const Healthy = "healthy"
 const HealthMetricName = "harbor_health_collector"
 
 // prometheus.Desc variables
